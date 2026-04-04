@@ -217,7 +217,7 @@
   <!-- LEFT: 3D Canvas -->
   <div class="panel-left">
     <canvas id="three-canvas"></canvas>
-    <div class="canvas-overlay">Left-drag: rotate &nbsp;|&nbsp; Scroll: zoom &nbsp;|&nbsp; Right-drag: pan</div>
+    <div class="canvas-overlay">Left-drag: rotate &nbsp;|&nbsp; Scroll: zoom &nbsp;|&nbsp; Right-drag: pan &nbsp;|&nbsp; Grid: 5000×5000 mm</div>
   </div>
 
   <!-- RIGHT: Controls -->
@@ -232,35 +232,35 @@
         <input v-model="form.name" placeholder="e.g. Front Wall" />
       </div>
 
-      <div class="section-label">Dimensions</div>
+      <div class="section-label">Dimensions (mm)</div>
       <div class="form-row">
         <div class="form-group">
           <label>Width</label>
-          <input type="number" v-model.number="form.width" min="0.1" step="0.1" />
+          <input type="number" v-model.number="form.width" min="1" step="1" />
         </div>
         <div class="form-group">
           <label>Height</label>
-          <input type="number" v-model.number="form.height" min="0.1" step="0.1" />
+          <input type="number" v-model.number="form.height" min="1" step="1" />
         </div>
         <div class="form-group">
           <label>Depth</label>
-          <input type="number" v-model.number="form.depth" min="0.1" step="0.1" />
+          <input type="number" v-model.number="form.depth" min="1" step="1" />
         </div>
       </div>
 
-      <div class="section-label">Position</div>
+      <div class="section-label">Position (mm)</div>
       <div class="form-row">
         <div class="form-group">
           <label>X</label>
-          <input type="number" v-model.number="form.px" step="0.1" />
+          <input type="number" v-model.number="form.px" step="1" />
         </div>
         <div class="form-group">
           <label>Y</label>
-          <input type="number" v-model.number="form.py" step="0.1" />
+          <input type="number" v-model.number="form.py" step="1" />
         </div>
         <div class="form-group">
           <label>Z</label>
-          <input type="number" v-model.number="form.pz" step="0.1" />
+          <input type="number" v-model.number="form.pz" step="1" />
         </div>
       </div>
 
@@ -348,7 +348,7 @@ new Vue({
   methods: {
     // ── Helpers ──────────────────────────────────────────────────────────────
     blankForm() {
-      return { name: '', width: 2, height: 2, depth: 0.1,
+      return { name: '', width: 600, height: 600, depth: 18,
                px: 0, py: 0, pz: 0, rx: 0, ry: 0, rz: 0 };
     },
 
@@ -363,11 +363,11 @@ new Vue({
       // Scene
       this.scene = new THREE.Scene();
       this.scene.background = new THREE.Color(0x0d0d1a);
-      this.scene.fog = new THREE.Fog(0x0d0d1a, 30, 80);
+      this.scene.fog = new THREE.Fog(0x0d0d1a, 12000, 30000);
 
-      // Camera
-      this.camera = new THREE.PerspectiveCamera(50, W / H, 0.1, 200);
-      this.camera.position.set(6, 5, 10);
+      // Camera  (1 unit = 1 mm, workspace = 5000×5000 mm)
+      this.camera = new THREE.PerspectiveCamera(50, W / H, 1, 40000);
+      this.camera.position.set(4000, 3200, 6500);
 
       // Renderer
       this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -383,49 +383,53 @@ new Vue({
       this.scene.add(ambient);
 
       const dirLight = new THREE.DirectionalLight(0xffeedd, 1.4);
-      dirLight.position.set(8, 14, 6);
+      dirLight.position.set(4000, 8000, 3000);
       dirLight.castShadow = true;
       dirLight.shadow.mapSize.set(2048, 2048);
-      dirLight.shadow.camera.near = 0.5;
-      dirLight.shadow.camera.far = 80;
-      dirLight.shadow.camera.left = -20;
-      dirLight.shadow.camera.right = 20;
-      dirLight.shadow.camera.top = 20;
-      dirLight.shadow.camera.bottom = -20;
+      dirLight.shadow.camera.near = 10;
+      dirLight.shadow.camera.far = 20000;
+      dirLight.shadow.camera.left = -4000;
+      dirLight.shadow.camera.right = 4000;
+      dirLight.shadow.camera.top = 4000;
+      dirLight.shadow.camera.bottom = -4000;
       this.scene.add(dirLight);
 
       const fillLight = new THREE.DirectionalLight(0x8899ff, 0.5);
-      fillLight.position.set(-6, 4, -8);
+      fillLight.position.set(-3000, 2000, -4000);
       this.scene.add(fillLight);
 
-      const pointLight = new THREE.PointLight(0xe94560, 0.6, 30);
-      pointLight.position.set(-4, 6, 4);
+      const pointLight = new THREE.PointLight(0xe94560, 0.8, 12000);
+      pointLight.position.set(-2000, 3000, 2000);
       this.scene.add(pointLight);
 
-      // Ground grid
-      const gridHelper = new THREE.GridHelper(20, 20, 0x1a2a4a, 0x1a2a4a);
-      this.scene.add(gridHelper);
+      // Ground grid — 5000×5000 mm, 50 divisions = 100 mm per cell
+      const gridMajor = new THREE.GridHelper(5000, 50, 0x223355, 0x1a2a4a);
+      this.scene.add(gridMajor);
+      // Super-grid: 5 lines per 500 mm to highlight major 500 mm intervals
+      const gridMinor = new THREE.GridHelper(5000, 10, 0x2a4060, 0x1e304a);
+      gridMinor.position.y = 0.5;
+      this.scene.add(gridMinor);
 
       // Ground plane (shadow receiver)
-      const groundGeo = new THREE.PlaneGeometry(40, 40);
+      const groundGeo = new THREE.PlaneGeometry(6000, 6000);
       const groundMat = new THREE.MeshLambertMaterial({ color: 0x0d1420, transparent: true, opacity: 0.8 });
       const ground = new THREE.Mesh(groundGeo, groundMat);
       ground.rotation.x = -Math.PI / 2;
-      ground.position.y = -0.01;
+      ground.position.y = -0.5;
       ground.receiveShadow = true;
       this.scene.add(ground);
 
-      // Axes helper (subtle)
-      const axes = new THREE.AxesHelper(3);
-      axes.position.y = 0.01;
+      // Axes helper — 500 mm arms
+      const axes = new THREE.AxesHelper(500);
+      axes.position.y = 1;
       this.scene.add(axes);
 
       // OrbitControls
       this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
       this.controls.enableDamping = true;
       this.controls.dampingFactor = 0.07;
-      this.controls.minDistance = 1;
-      this.controls.maxDistance = 60;
+      this.controls.minDistance = 50;
+      this.controls.maxDistance = 18000;
 
       // Animate
       const animate = () => {
@@ -519,7 +523,7 @@ new Vue({
       const nodes = this.panels.map(p => ({
         id: `panel-${p.id}`,
         parent: '#',
-        text: `<b>${p.name}</b> <span style="color:#667;font-size:0.75em">${p.width}×${p.height}×${p.depth}</span>`,
+        text: `<b>${p.name}</b> <span style="color:#667;font-size:0.75em">${p.width}×${p.height}×${p.depth} mm</span>`,
         type: 'panel',
       }));
       const inst = $('#jstree-container').jstree(true);
