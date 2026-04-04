@@ -371,10 +371,10 @@
           @click="submitPanel" :disabled="!form.name.trim()">
           {{ editingId ? 'Update Panel' : '+ Add Panel' }}
         </button>
-        <button v-if="editingId" class="btn btn-secondary btn-sm"
-          style="width:100%;margin-top:6px" @click="cancelEdit">
-          Cancel
-        </button>
+        <div v-if="editingId" style="display:flex;gap:6px;margin-top:6px">
+          <button class="btn btn-secondary btn-sm" style="flex:1" @click="cancelEdit">Cancel</button>
+          <button class="btn btn-danger btn-sm" style="flex:1" @click="deletePanel(editingId)">Delete Panel</button>
+        </div>
       </div>
 
       <!-- Parts tree -->
@@ -694,6 +694,10 @@ new Vue({
 
     addMesh(panel) {
       const geo = new THREE.BoxGeometry(panel.width, panel.height, panel.depth);
+      // Shift geometry so local origin = bottom-left-front corner
+      // (px,py,pz) in the form refers to that corner, not the centroid
+      geo.translate(panel.width / 2, panel.height / 2, panel.depth / 2);
+
       const hue = (panel.id * 47) % 360;
       const color = new THREE.Color(`hsl(${hue}, 60%, 55%)`);
       const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.45, metalness: 0.3 });
