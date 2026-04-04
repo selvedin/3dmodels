@@ -13,6 +13,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.16/jstree.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/build/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/environments/RoomEnvironment.js"></script>
 
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -620,6 +621,13 @@ new Vue({
       this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
       this.renderer.toneMappingExposure = 1.2;
 
+      // Environment map for PBR reflections (RoomEnvironment → PMREM)
+      const pmrem = new THREE.PMREMGenerator(this.renderer);
+      pmrem.compileEquirectangularShader();
+      const envTexture = pmrem.fromScene(new THREE.RoomEnvironment()).texture;
+      this.scene.environment = envTexture;   // drives reflections on MeshStandardMaterial
+      pmrem.dispose();
+
       // Lights
       const ambient = new THREE.AmbientLight(0xffffff, 0.4);
       this.scene.add(ambient);
@@ -700,7 +708,7 @@ new Vue({
 
       const hue = (panel.id * 47) % 360;
       const color = new THREE.Color(`hsl(${hue}, 60%, 55%)`);
-      const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.45, metalness: 0.3 });
+      const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.35, metalness: 0.55 });
       const mesh = new THREE.Mesh(geo, mat);
       mesh.castShadow = true;
       mesh.receiveShadow = true;
