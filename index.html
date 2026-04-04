@@ -4,6 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>3D Model Builder</title>
+
+  <!-- Dependencies -->
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.7.16/dist/vue.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dexie@3.2.4/dist/dexie.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.16/themes/default/style.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.16/jstree.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/controls/OrbitControls.js"></script>
+
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -12,10 +22,12 @@
       background: #1a1a2e;
       color: #e0e0e0;
       height: 100vh;
+      overflow: hidden;
       display: flex;
       flex-direction: column;
     }
 
+    /* ── HEADER ─────────────────────────────────────────── */
     header {
       background: #16213e;
       padding: 12px 24px;
@@ -23,27 +35,150 @@
       display: flex;
       align-items: center;
       gap: 12px;
+      flex-shrink: 0;
     }
 
-    header h1 {
-      font-size: 1.2rem;
-      color: #e94560;
-      font-weight: 600;
-      letter-spacing: 1px;
-    }
+    header h1 { font-size: 1.2rem; color: #e94560; font-weight: 600; letter-spacing: 1px; }
+    header .breadcrumb { font-size: 0.78rem; color: #556; display: flex; align-items: center; gap: 6px; }
+    header .breadcrumb .sep { color: #334; }
+    header .breadcrumb .proj-name { color: #aac; }
 
-    header span {
-      font-size: 0.75rem;
-      color: #888;
-    }
+    .header-spacer { flex: 1; }
 
-    #app {
-      display: flex;
+    /* ── SHARED BUTTONS ─────────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 6px; padding: 8px 16px; border: none; border-radius: 4px;
+      cursor: pointer; font-size: 0.82rem; font-weight: 600;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-primary { background: #e94560; color: #fff; }
+    .btn-primary:hover:not(:disabled) { opacity: 0.85; }
+    .btn-secondary { background: #0f3460; color: #e0e0e0; }
+    .btn-secondary:hover { background: #1a4a8a; }
+    .btn-danger { background: #3d1a1a; color: #e94560; border: 1px solid #5a2020; }
+    .btn-danger:hover { background: #5a2020; }
+    .btn-sm { padding: 4px 10px; font-size: 0.72rem; }
+    .btn-back { background: transparent; color: #889; border: 1px solid #334; font-size: 0.78rem; padding: 5px 12px; }
+    .btn-back:hover { color: #e0e0e0; border-color: #556; }
+
+    /* ── LANDING PAGE ───────────────────────────────────── */
+    #landing {
       flex: 1;
+      overflow-y: auto;
+      padding: 32px;
+    }
+
+    .landing-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 28px;
+    }
+
+    .landing-toolbar h2 { font-size: 1rem; color: #aac; font-weight: 400; }
+
+    .projects-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 16px;
+    }
+
+    .project-card {
+      background: #16213e;
+      border: 1px solid #0f3460;
+      border-radius: 8px;
+      padding: 20px;
+      cursor: pointer;
+      transition: border-color 0.2s, transform 0.15s;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .project-card:hover { border-color: #e94560; transform: translateY(-2px); }
+
+    .project-card .card-name {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #e0e0e0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .project-card .card-meta {
+      font-size: 0.72rem;
+      color: #557;
+    }
+
+    .project-card .card-panels {
+      font-size: 0.78rem;
+      color: #889;
+      margin-top: 4px;
+    }
+
+    .project-card .card-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .empty-projects {
+      grid-column: 1 / -1;
+      text-align: center;
+      color: #334;
+      padding: 60px 0;
+      font-size: 0.9rem;
+    }
+
+    .empty-projects span { font-size: 2rem; display: block; margin-bottom: 8px; }
+
+    /* ── MODAL ──────────────────────────────────────────── */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.7);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal {
+      background: #16213e;
+      border: 1px solid #0f3460;
+      border-radius: 10px;
+      padding: 28px;
+      width: 360px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .modal h3 { font-size: 1rem; color: #e94560; }
+
+    .modal input {
+      background: #0d1b36;
+      border: 1px solid #0f3460;
+      color: #e0e0e0;
+      padding: 9px 12px;
+      border-radius: 4px;
+      font-size: 0.9rem;
+      width: 100%;
+      transition: border-color 0.2s;
+    }
+
+    .modal input:focus { outline: none; border-color: #e94560; }
+
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+    /* ── 3D BUILDER ─────────────────────────────────────── */
+    #builder {
+      flex: 1;
+      display: flex;
       overflow: hidden;
     }
 
-    /* LEFT PANEL - 3D Canvas */
     .panel-left {
       flex: 1;
       position: relative;
@@ -51,25 +186,15 @@
       border-right: 2px solid #0f3460;
     }
 
-    .panel-left canvas {
-      display: block;
-      width: 100% !important;
-      height: 100% !important;
-    }
+    .panel-left canvas { display: block; width: 100% !important; height: 100% !important; }
 
     .canvas-overlay {
-      position: absolute;
-      top: 12px;
-      left: 12px;
+      position: absolute; top: 12px; left: 12px;
       background: rgba(0,0,0,0.5);
-      padding: 6px 12px;
-      border-radius: 4px;
-      font-size: 0.72rem;
-      color: #aaa;
-      pointer-events: none;
+      padding: 6px 12px; border-radius: 4px;
+      font-size: 0.72rem; color: #aaa; pointer-events: none;
     }
 
-    /* RIGHT PANEL - Controls */
     .panel-right {
       width: 340px;
       display: flex;
@@ -91,252 +216,249 @@
       margin-bottom: 12px;
     }
 
-    /* FORM */
-    .form-row {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 8px;
-    }
+    .form-row { display: flex; gap: 8px; margin-bottom: 8px; }
 
-    .form-group {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .form-group label {
-      font-size: 0.68rem;
-      color: #888;
-      margin-bottom: 3px;
-      text-transform: uppercase;
-    }
-
+    .form-group { flex: 1; display: flex; flex-direction: column; }
+    .form-group label { font-size: 0.68rem; color: #888; margin-bottom: 3px; text-transform: uppercase; }
     .form-group input {
-      background: #0d1b36;
-      border: 1px solid #0f3460;
-      color: #e0e0e0;
-      padding: 5px 8px;
-      border-radius: 4px;
-      font-size: 0.82rem;
-      width: 100%;
-      transition: border-color 0.2s;
+      background: #0d1b36; border: 1px solid #0f3460;
+      color: #e0e0e0; padding: 5px 8px; border-radius: 4px;
+      font-size: 0.82rem; width: 100%; transition: border-color 0.2s;
     }
-
-    .form-group input:focus {
-      outline: none;
-      border-color: #e94560;
-    }
-
+    .form-group input:focus { outline: none; border-color: #e94560; }
     .form-group input::-webkit-inner-spin-button { opacity: 0.4; }
 
     .section-label {
-      font-size: 0.7rem;
-      color: #557;
-      text-transform: uppercase;
-      letter-spacing: 1px;
+      font-size: 0.7rem; color: #557;
+      text-transform: uppercase; letter-spacing: 1px;
       margin: 8px 0 4px;
     }
 
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      padding: 8px 16px;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 0.82rem;
-      font-weight: 600;
-      transition: opacity 0.2s, transform 0.1s;
-    }
+    .btn-edit-sm { background: #0f3460; color: #e0e0e0; }
+    .btn-edit-sm:hover { background: #1a4a8a; }
 
-    .btn:active { transform: scale(0.97); }
-    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-    .btn-primary {
-      background: #e94560;
-      color: #fff;
-      width: 100%;
-      margin-top: 10px;
-    }
-
-    .btn-primary:hover:not(:disabled) { opacity: 0.85; }
-
-    .btn-sm {
-      padding: 3px 8px;
-      font-size: 0.72rem;
-    }
-
-    .btn-edit { background: #0f3460; color: #e0e0e0; }
-    .btn-edit:hover { background: #1a4a8a; }
-    .btn-delete { background: #3d1a1a; color: #e94560; }
-    .btn-delete:hover { background: #5a2020; }
-
-    /* PARTS TREE */
-    .parts-tree {
-      flex: 1;
-      overflow-y: auto;
-      padding: 12px;
-    }
-
+    .parts-tree { flex: 1; overflow-y: auto; padding: 12px; }
     .parts-tree h2 {
-      font-size: 0.8rem;
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
-      color: #e94560;
-      margin-bottom: 10px;
+      font-size: 0.8rem; text-transform: uppercase;
+      letter-spacing: 1.5px; color: #e94560; margin-bottom: 10px;
     }
 
-    .empty-state {
-      color: #445;
-      font-size: 0.78rem;
-      text-align: center;
-      padding: 24px 0;
-    }
+    .empty-state { color: #445; font-size: 0.78rem; text-align: center; padding: 24px 0; }
 
-    /* status bar */
     footer {
-      background: #0f1929;
-      padding: 4px 16px;
-      font-size: 0.7rem;
-      color: #445;
-      border-top: 1px solid #0f3460;
+      background: #0f1929; padding: 4px 16px;
+      font-size: 0.7rem; color: #445;
+      border-top: 1px solid #0f3460; flex-shrink: 0;
     }
   </style>
 </head>
 <body>
 
-<header>
-  <h1>3D Model Builder</h1>
-  <span>Vue.js 2 + Three.js + jstree</span>
-</header>
-
 <div id="app">
 
-  <!-- LEFT: 3D Canvas -->
-  <div class="panel-left">
-    <canvas id="three-canvas"></canvas>
-    <div class="canvas-overlay">Left-drag: rotate &nbsp;|&nbsp; Scroll: zoom &nbsp;|&nbsp; Right-drag: pan &nbsp;|&nbsp; Grid: 5000×5000 mm</div>
-  </div>
+  <!-- ── HEADER ─────────────────────────────────────────── -->
+  <header>
+    <h1>3D Model Builder</h1>
+    <div class="breadcrumb" v-if="currentProject">
+      <span class="sep">/</span>
+      <span class="proj-name">{{ currentProject.name }}</span>
+    </div>
+    <div class="header-spacer"></div>
+    <button v-if="currentProject" class="btn btn-back" @click="backToProjects">&#8592; Projects</button>
+  </header>
 
-  <!-- RIGHT: Controls -->
-  <div class="panel-right">
-
-    <!-- Add / Edit Form -->
-    <div class="panel-section">
-      <h2>{{ editingId ? 'Edit Panel' : 'Add Panel' }}</h2>
-
-      <div class="form-group" style="margin-bottom:8px">
-        <label>Name</label>
-        <input v-model="form.name" placeholder="e.g. Front Wall" />
-      </div>
-
-      <div class="section-label">Dimensions (mm)</div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>Width</label>
-          <input type="number" v-model.number="form.width" min="1" step="1" />
-        </div>
-        <div class="form-group">
-          <label>Height</label>
-          <input type="number" v-model.number="form.height" min="1" step="1" />
-        </div>
-        <div class="form-group">
-          <label>Depth</label>
-          <input type="number" v-model.number="form.depth" min="1" step="1" />
-        </div>
-      </div>
-
-      <div class="section-label">Position (mm)</div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>X</label>
-          <input type="number" v-model.number="form.px" step="1" />
-        </div>
-        <div class="form-group">
-          <label>Y</label>
-          <input type="number" v-model.number="form.py" step="1" />
-        </div>
-        <div class="form-group">
-          <label>Z</label>
-          <input type="number" v-model.number="form.pz" step="1" />
-        </div>
-      </div>
-
-      <div class="section-label">Rotation (degrees)</div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>Rx</label>
-          <input type="number" v-model.number="form.rx" step="1" />
-        </div>
-        <div class="form-group">
-          <label>Ry</label>
-          <input type="number" v-model.number="form.ry" step="1" />
-        </div>
-        <div class="form-group">
-          <label>Rz</label>
-          <input type="number" v-model.number="form.rz" step="1" />
-        </div>
-      </div>
-
-      <button class="btn btn-primary" @click="submitPanel" :disabled="!form.name.trim()">
-        {{ editingId ? 'Update Panel' : '+ Add Panel' }}
-      </button>
-      <button v-if="editingId" class="btn btn-sm btn-edit" style="width:100%;margin-top:6px" @click="cancelEdit">
-        Cancel
-      </button>
+  <!-- ── LANDING: PROJECT LIST ──────────────────────────── -->
+  <div id="landing" v-if="!currentProject">
+    <div class="landing-toolbar">
+      <h2>Your Projects ({{ projects.length }})</h2>
+      <button class="btn btn-primary" @click="showNewProjectModal = true">+ New Project</button>
     </div>
 
-    <!-- Parts List (jstree target) -->
-    <div class="parts-tree">
-      <h2>Scene Panels ({{ panels.length }})</h2>
-      <div v-if="panels.length === 0" class="empty-state">
-        No panels yet.<br>Add your first panel above.
+    <div class="projects-grid">
+      <div v-if="projects.length === 0" class="empty-projects">
+        <span>&#128190;</span>
+        No projects yet. Create your first one!
       </div>
-      <div id="jstree-container"></div>
+
+      <div
+        v-for="proj in projects"
+        :key="proj.id"
+        class="project-card"
+        @click="openProject(proj)"
+      >
+        <div class="card-name">{{ proj.name }}</div>
+        <div class="card-meta">Created: {{ formatDate(proj.createdAt) }}</div>
+        <div class="card-panels">{{ panelCounts[proj.id] || 0 }} panel(s)</div>
+        <div class="card-actions" @click.stop>
+          <button class="btn btn-secondary btn-sm" @click="openProject(proj)">Open</button>
+          <button class="btn btn-danger btn-sm" @click="deleteProject(proj)">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 3D BUILDER ─────────────────────────────────────── -->
+  <div id="builder" v-if="currentProject">
+
+    <!-- Left: 3D Canvas -->
+    <div class="panel-left">
+      <canvas id="three-canvas"></canvas>
+      <div class="canvas-overlay">
+        Left-drag: rotate &nbsp;|&nbsp; Scroll: zoom &nbsp;|&nbsp; Right-drag: pan &nbsp;|&nbsp; Grid: 5000×5000 mm
+      </div>
     </div>
 
+    <!-- Right: Controls -->
+    <div class="panel-right">
+
+      <div class="panel-section">
+        <h2>{{ editingId ? 'Edit Panel' : 'Add Panel' }}</h2>
+
+        <div class="form-group" style="margin-bottom:8px">
+          <label>Name</label>
+          <input v-model="form.name" placeholder="e.g. Front Wall" @keyup.enter="submitPanel" />
+        </div>
+
+        <div class="section-label">Dimensions (mm)</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Width</label>
+            <input type="number" v-model.number="form.width" min="1" step="1" />
+          </div>
+          <div class="form-group">
+            <label>Height</label>
+            <input type="number" v-model.number="form.height" min="1" step="1" />
+          </div>
+          <div class="form-group">
+            <label>Depth</label>
+            <input type="number" v-model.number="form.depth" min="1" step="1" />
+          </div>
+        </div>
+
+        <div class="section-label">Position (mm)</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>X</label>
+            <input type="number" v-model.number="form.px" step="1" />
+          </div>
+          <div class="form-group">
+            <label>Y</label>
+            <input type="number" v-model.number="form.py" step="1" />
+          </div>
+          <div class="form-group">
+            <label>Z</label>
+            <input type="number" v-model.number="form.pz" step="1" />
+          </div>
+        </div>
+
+        <div class="section-label">Rotation (degrees)</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Rx</label>
+            <input type="number" v-model.number="form.rx" step="1" />
+          </div>
+          <div class="form-group">
+            <label>Ry</label>
+            <input type="number" v-model.number="form.ry" step="1" />
+          </div>
+          <div class="form-group">
+            <label>Rz</label>
+            <input type="number" v-model.number="form.rz" step="1" />
+          </div>
+        </div>
+
+        <button class="btn btn-primary" style="width:100%;margin-top:10px"
+          @click="submitPanel" :disabled="!form.name.trim()">
+          {{ editingId ? 'Update Panel' : '+ Add Panel' }}
+        </button>
+        <button v-if="editingId" class="btn btn-secondary btn-sm"
+          style="width:100%;margin-top:6px" @click="cancelEdit">
+          Cancel
+        </button>
+      </div>
+
+      <!-- Parts tree -->
+      <div class="parts-tree">
+        <h2>Panels ({{ panels.length }})</h2>
+        <div v-if="panels.length === 0" class="empty-state">
+          No panels yet.<br>Add your first panel above.
+        </div>
+        <div id="jstree-container"></div>
+      </div>
+
+    </div>
   </div>
-</div>
 
-<footer>
-  <span>Panels: {{ panels.length }}</span>
-</footer>
+  <!-- ── FOOTER ─────────────────────────────────────────── -->
+  <footer>
+    <span v-if="currentProject">Project: {{ currentProject.name }} &nbsp;|&nbsp; Panels: {{ panels.length }}</span>
+    <span v-else>Projects: {{ projects.length }}</span>
+  </footer>
 
-<!-- Dependencies -->
-<script src="https://cdn.jsdelivr.net/npm/vue@2.7.16/dist/vue.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.16/themes/default/style.min.css" />
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.16/jstree.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.134.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/controls/OrbitControls.js"></script>
+  <!-- ── NEW PROJECT MODAL ──────────────────────────────── -->
+  <div class="modal-overlay" v-if="showNewProjectModal" @click.self="showNewProjectModal = false">
+    <div class="modal">
+      <h3>New Project</h3>
+      <input
+        v-model="newProjectName"
+        placeholder="Project name..."
+        ref="newProjectInput"
+        @keyup.enter="createProject"
+        maxlength="80"
+      />
+      <div class="modal-actions">
+        <button class="btn btn-secondary" @click="showNewProjectModal = false">Cancel</button>
+        <button class="btn btn-primary" @click="createProject" :disabled="!newProjectName.trim()">Create</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- #app -->
 
 <script>
-// ── Vue App ──────────────────────────────────────────────────────────────────
+// ── Dexie database ────────────────────────────────────────────────────────────
+const db = new Dexie('3dModelBuilder');
+db.version(1).stores({
+  projects: '++id, name, createdAt',
+  panels:   '++id, projectId, name, width, height, depth, px, py, pz, rx, ry, rz',
+});
+
+// ── Vue App ───────────────────────────────────────────────────────────────────
 new Vue({
   el: '#app',
 
   data() {
     return {
-      panels: [],          // array of panel objects
-      editingId: null,
-      nextId: 1,
+      // ── Landing
+      projects: [],
+      panelCounts: {},         // { projectId: count }
+      showNewProjectModal: false,
+      newProjectName: '',
 
+      // ── Builder
+      currentProject: null,
+      panels: [],
+      editingId: null,
       form: this.blankForm(),
 
-      // Three.js handles
+      // ── Three.js handles
       scene: null,
       camera: null,
       renderer: null,
       controls: null,
-      meshMap: {},         // id → THREE.Mesh
+      meshMap: {},
+      threeReady: false,
     };
   },
 
-  mounted() {
-    this.initThree();
-    this.initJsTree();
+  watch: {
+    showNewProjectModal(val) {
+      if (val) this.$nextTick(() => this.$refs.newProjectInput && this.$refs.newProjectInput.focus());
+    },
+  },
+
+  async mounted() {
+    await this.loadProjects();
     window.addEventListener('resize', this.onResize);
   },
 
@@ -346,7 +468,7 @@ new Vue({
   },
 
   methods: {
-    // ── Helpers ──────────────────────────────────────────────────────────────
+    // ── Utilities ─────────────────────────────────────────────────────────────
     blankForm() {
       return { name: '', width: 600, height: 600, depth: 18,
                px: 0, py: 0, pz: 0, rx: 0, ry: 0, rz: 0 };
@@ -354,22 +476,142 @@ new Vue({
 
     deg2rad(d) { return d * Math.PI / 180; },
 
-    // ── Three.js ─────────────────────────────────────────────────────────────
+    formatDate(ts) {
+      return new Date(ts).toLocaleString(undefined, {
+        year: 'numeric', month: 'short', day: 'numeric',
+        hour: '2-digit', minute: '2-digit',
+      });
+    },
+
+    // ── Projects (IndexedDB via Dexie) ────────────────────────────────────────
+    async loadProjects() {
+      this.projects = await db.projects.orderBy('createdAt').reverse().toArray();
+      await this.loadPanelCounts();
+    },
+
+    async loadPanelCounts() {
+      const counts = {};
+      for (const proj of this.projects) {
+        counts[proj.id] = await db.panels.where('projectId').equals(proj.id).count();
+      }
+      this.panelCounts = counts;
+    },
+
+    async createProject() {
+      const name = this.newProjectName.trim();
+      if (!name) return;
+      const id = await db.projects.add({ name, createdAt: Date.now() });
+      this.showNewProjectModal = false;
+      this.newProjectName = '';
+      await this.loadProjects();
+      const proj = await db.projects.get(id);
+      this.openProject(proj);
+    },
+
+    async deleteProject(proj) {
+      if (!confirm(`Delete project "${proj.name}" and all its panels?`)) return;
+      await db.panels.where('projectId').equals(proj.id).delete();
+      await db.projects.delete(proj.id);
+      await this.loadProjects();
+    },
+
+    async openProject(proj) {
+      this.currentProject = proj;
+      this.panels = await db.panels.where('projectId').equals(proj.id).toArray();
+      this.editingId = null;
+      this.form = this.blankForm();
+      this.$nextTick(() => {
+        this.initThree();
+        this.initJsTree();
+        // Render existing panels
+        this.panels.forEach(p => this.addMesh(p));
+        this.$nextTick(() => this.refreshJsTree());
+      });
+    },
+
+    async backToProjects() {
+      // Tear down Three.js
+      if (this.renderer) {
+        this.renderer.dispose();
+        this.renderer = null;
+      }
+      // Clear mesh map
+      Object.keys(this.meshMap).forEach(k => delete this.meshMap[k]);
+      this.scene = null;
+      this.camera = null;
+      this.controls = null;
+      this.threeReady = false;
+
+      // Tear down jstree
+      const $jt = $('#jstree-container');
+      if ($jt.data('jstree')) { $jt.jstree('destroy'); }
+
+      this.currentProject = null;
+      this.panels = [];
+      this.editingId = null;
+      await this.loadProjects();
+    },
+
+    // ── Panels (IndexedDB via Dexie) ──────────────────────────────────────────
+    async submitPanel() {
+      if (!this.form.name.trim()) return;
+
+      if (this.editingId) {
+        const data = { ...this.form, projectId: this.currentProject.id };
+        await db.panels.update(this.editingId, data);
+        const updated = await db.panels.get(this.editingId);
+        const idx = this.panels.findIndex(p => p.id === this.editingId);
+        if (idx !== -1) this.$set(this.panels, idx, updated);
+        this.updateMesh(updated);
+        this.editingId = null;
+      } else {
+        const data = { ...this.form, projectId: this.currentProject.id };
+        const id = await db.panels.add(data);
+        const panel = await db.panels.get(id);
+        this.panels.push(panel);
+        this.addMesh(panel);
+      }
+
+      this.form = this.blankForm();
+      this.$nextTick(() => this.refreshJsTree());
+    },
+
+    async deletePanel(id) {
+      await db.panels.delete(id);
+      this.panels = this.panels.filter(p => p.id !== id);
+      this.removeMesh(id);
+      if (this.editingId === id) { this.editingId = null; this.form = this.blankForm(); }
+      this.$nextTick(() => this.refreshJsTree());
+    },
+
+    startEdit(id) {
+      const panel = this.panels.find(p => p.id === id);
+      if (!panel) return;
+      this.editingId = id;
+      const { projectId, ...fields } = panel;
+      this.form = { ...fields };
+      delete this.form.id;
+    },
+
+    cancelEdit() {
+      this.editingId = null;
+      this.form = this.blankForm();
+      this.highlightNode(null);
+    },
+
+    // ── Three.js ──────────────────────────────────────────────────────────────
     initThree() {
       const canvas = document.getElementById('three-canvas');
       const W = canvas.parentElement.clientWidth;
       const H = canvas.parentElement.clientHeight;
 
-      // Scene
       this.scene = new THREE.Scene();
       this.scene.background = new THREE.Color(0x0d0d1a);
       this.scene.fog = new THREE.Fog(0x0d0d1a, 12000, 30000);
 
-      // Camera  (1 unit = 1 mm, workspace = 5000×5000 mm)
       this.camera = new THREE.PerspectiveCamera(50, W / H, 1, 40000);
       this.camera.position.set(4000, 3200, 6500);
 
-      // Renderer
       this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
       this.renderer.setSize(W, H);
       this.renderer.setPixelRatio(window.devicePixelRatio);
@@ -402,15 +644,13 @@ new Vue({
       pointLight.position.set(-2000, 3000, 2000);
       this.scene.add(pointLight);
 
-      // Ground grid — 5000×5000 mm, 50 divisions = 100 mm per cell
+      // Grid — 5000×5000 mm
       const gridMajor = new THREE.GridHelper(5000, 50, 0x223355, 0x1a2a4a);
       this.scene.add(gridMajor);
-      // Super-grid: 5 lines per 500 mm to highlight major 500 mm intervals
       const gridMinor = new THREE.GridHelper(5000, 10, 0x2a4060, 0x1e304a);
       gridMinor.position.y = 0.5;
       this.scene.add(gridMinor);
 
-      // Ground plane (shadow receiver)
       const groundGeo = new THREE.PlaneGeometry(6000, 6000);
       const groundMat = new THREE.MeshLambertMaterial({ color: 0x0d1420, transparent: true, opacity: 0.8 });
       const ground = new THREE.Mesh(groundGeo, groundMat);
@@ -419,20 +659,21 @@ new Vue({
       ground.receiveShadow = true;
       this.scene.add(ground);
 
-      // Axes helper — 500 mm arms
       const axes = new THREE.AxesHelper(500);
       axes.position.y = 1;
       this.scene.add(axes);
 
-      // OrbitControls
       this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
       this.controls.enableDamping = true;
       this.controls.dampingFactor = 0.07;
       this.controls.minDistance = 50;
       this.controls.maxDistance = 18000;
 
-      // Animate
+      this.meshMap = {};
+      this.threeReady = true;
+
       const animate = () => {
+        if (!this.threeReady) return;
         requestAnimationFrame(animate);
         this.controls.update();
         this.renderer.render(this.scene, this.camera);
@@ -441,7 +682,9 @@ new Vue({
     },
 
     onResize() {
+      if (!this.renderer || !this.currentProject) return;
       const container = document.querySelector('.panel-left');
+      if (!container) return;
       const W = container.clientWidth;
       const H = container.clientHeight;
       this.camera.aspect = W / H;
@@ -451,33 +694,17 @@ new Vue({
 
     addMesh(panel) {
       const geo = new THREE.BoxGeometry(panel.width, panel.height, panel.depth);
-
-      // Realistic PBR-like material with edge highlight
       const hue = (panel.id * 47) % 360;
       const color = new THREE.Color(`hsl(${hue}, 60%, 55%)`);
-
-      const mat = new THREE.MeshStandardMaterial({
-        color,
-        roughness: 0.45,
-        metalness: 0.3,
-      });
-
+      const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.45, metalness: 0.3 });
       const mesh = new THREE.Mesh(geo, mat);
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       mesh.position.set(panel.px, panel.py, panel.pz);
-      mesh.rotation.set(
-        this.deg2rad(panel.rx),
-        this.deg2rad(panel.ry),
-        this.deg2rad(panel.rz)
-      );
-
-      // Wireframe outline
+      mesh.rotation.set(this.deg2rad(panel.rx), this.deg2rad(panel.ry), this.deg2rad(panel.rz));
       const edgesGeo = new THREE.EdgesGeometry(geo);
       const edgesMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.15 });
-      const edges = new THREE.LineSegments(edgesGeo, edgesMat);
-      mesh.add(edges);
-
+      mesh.add(new THREE.LineSegments(edgesGeo, edgesMat));
       this.scene.add(mesh);
       this.meshMap[panel.id] = mesh;
     },
@@ -508,9 +735,7 @@ new Vue({
           check_callback: true,
         },
         plugins: ['wholerow', 'types'],
-        types: {
-          panel: { icon: 'jstree-icon jstree-file' },
-        },
+        types: { panel: { icon: 'jstree-icon jstree-file' } },
       });
 
       $('#jstree-container').on('select_node.jstree', function(e, data) {
@@ -520,14 +745,14 @@ new Vue({
     },
 
     refreshJsTree() {
+      const inst = $('#jstree-container').jstree(true);
+      if (!inst) return;
       const nodes = this.panels.map(p => ({
         id: `panel-${p.id}`,
         parent: '#',
         text: `<b>${p.name}</b> <span style="color:#667;font-size:0.75em">${p.width}×${p.height}×${p.depth} mm</span>`,
         type: 'panel',
       }));
-      const inst = $('#jstree-container').jstree(true);
-      if (!inst) return;
       inst.settings.core.data = nodes;
       inst.refresh();
     },
@@ -538,50 +763,7 @@ new Vue({
       inst.deselect_all(true);
       if (id) inst.select_node(`panel-${id}`, true);
     },
-
-    // ── Panel CRUD ─────────────────────────────────────────────────────────────
-    submitPanel() {
-      if (!this.form.name.trim()) return;
-
-      if (this.editingId) {
-        const idx = this.panels.findIndex(p => p.id === this.editingId);
-        if (idx !== -1) {
-          const updated = { ...this.panels[idx], ...this.form, id: this.editingId };
-          this.$set(this.panels, idx, updated);
-          this.updateMesh(updated);
-        }
-        this.editingId = null;
-      } else {
-        const panel = { id: this.nextId++, ...this.form };
-        this.panels.push(panel);
-        this.addMesh(panel);
-      }
-
-      this.form = this.blankForm();
-      this.$nextTick(() => this.refreshJsTree());
-    },
-
-    startEdit(id) {
-      const panel = this.panels.find(p => p.id === id);
-      if (!panel) return;
-      this.editingId = id;
-      this.form = { ...panel };
-      delete this.form.id;
-    },
-
-    cancelEdit() {
-      this.editingId = null;
-      this.form = this.blankForm();
-      this.highlightNode(null);
-    },
-
-    deletePanel(id) {
-      this.panels = this.panels.filter(p => p.id !== id);
-      this.removeMesh(id);
-      if (this.editingId === id) { this.editingId = null; this.form = this.blankForm(); }
-      this.$nextTick(() => this.refreshJsTree());
-    },
-  }
+  },
 });
 </script>
 </body>
