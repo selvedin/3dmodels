@@ -309,8 +309,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.16/themes/default/style.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.16/jstree.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.1/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.134.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/controls/OrbitControls.js"></script>
 
 <script>
 // ── Vue App ──────────────────────────────────────────────────────────────────
@@ -523,12 +523,14 @@ new Vue({
         type: 'panel',
       }));
       const inst = $('#jstree-container').jstree(true);
+      if (!inst) return;
       inst.settings.core.data = nodes;
       inst.refresh();
     },
 
     highlightNode(id) {
       const inst = $('#jstree-container').jstree(true);
+      if (!inst) return;
       inst.deselect_all(true);
       if (id) inst.select_node(`panel-${id}`, true);
     },
