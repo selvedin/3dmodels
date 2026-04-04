@@ -246,6 +246,61 @@
 
     .empty-state { color: #445; font-size: 0.78rem; text-align: center; padding: 24px 0; }
 
+    /* ── MATERIAL SELECTOR ──────────────────────────────── */
+    .mat-tabs {
+      display: flex; gap: 4px; margin-bottom: 10px;
+    }
+    .mat-tab {
+      flex: 1; padding: 5px 4px; border: 1px solid #0f3460;
+      background: #0d1b36; color: #778; border-radius: 4px;
+      font-size: 0.72rem; font-weight: 600; cursor: pointer;
+      text-align: center; transition: all 0.15s; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .mat-tab.active { background: #e94560; border-color: #e94560; color: #fff; }
+    .mat-tab:hover:not(.active) { border-color: #557; color: #aac; }
+
+    .color-row {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .color-row input[type=color] {
+      width: 44px; height: 34px; padding: 2px; border: 1px solid #0f3460;
+      border-radius: 4px; background: #0d1b36; cursor: pointer;
+    }
+    .color-hex {
+      background: #0d1b36; border: 1px solid #0f3460; color: #e0e0e0;
+      padding: 5px 8px; border-radius: 4px; font-size: 0.82rem;
+      width: 90px; font-family: monospace;
+    }
+    .color-hex:focus { outline: none; border-color: #e94560; }
+
+    .wood-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px;
+    }
+    .wood-swatch {
+      height: 42px; border-radius: 4px; cursor: pointer;
+      border: 2px solid transparent; transition: border-color 0.15s, transform 0.1s;
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: flex-end; padding-bottom: 3px;
+      font-size: 0.6rem; color: rgba(255,255,255,0.7); font-weight: 600;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.8); overflow: hidden; position: relative;
+    }
+    .wood-swatch canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .wood-swatch span { position: relative; z-index: 1; }
+    .wood-swatch:hover { transform: scale(1.05); }
+    .wood-swatch.active { border-color: #e94560; }
+
+    .img-upload-area {
+      border: 1px dashed #0f3460; border-radius: 4px; padding: 12px;
+      text-align: center; cursor: pointer; transition: border-color 0.15s;
+    }
+    .img-upload-area:hover { border-color: #557; }
+    .img-upload-area input { display: none; }
+    .img-upload-area .hint { font-size: 0.72rem; color: #557; margin-bottom: 6px; }
+    .img-preview {
+      width: 100%; height: 80px; object-fit: cover;
+      border-radius: 3px; margin-top: 6px; display: block;
+    }
+
     footer {
       background: #0f1929; padding: 4px 16px;
       font-size: 0.7rem; color: #445;
@@ -368,6 +423,42 @@
           </div>
         </div>
 
+        <div class="section-label">Material</div>
+
+        <!-- Type tabs -->
+        <div class="mat-tabs">
+          <div class="mat-tab" :class="{active: form.materialType==='color'}"   @click="form.materialType='color'">Color</div>
+          <div class="mat-tab" :class="{active: form.materialType==='wood'}"    @click="form.materialType='wood'">Wood</div>
+          <div class="mat-tab" :class="{active: form.materialType==='image'}"   @click="form.materialType='image'">Image</div>
+        </div>
+
+        <!-- Solid color -->
+        <div v-if="form.materialType==='color'" class="color-row">
+          <input type="color" v-model="form.color" />
+          <input class="color-hex" v-model="form.color" maxlength="7" placeholder="#rrggbb" />
+        </div>
+
+        <!-- Wood presets -->
+        <div v-if="form.materialType==='wood'" class="wood-grid">
+          <div
+            v-for="w in woodPresets" :key="w.id"
+            class="wood-swatch"
+            :class="{active: form.woodType===w.id}"
+            :ref="'swatch_'+w.id"
+            @click="form.woodType=w.id"
+          >
+            <span>{{ w.label }}</span>
+          </div>
+        </div>
+
+        <!-- Custom image -->
+        <div v-if="form.materialType==='image'" class="img-upload-area" @click="$refs.imgInput.click()">
+          <input type="file" ref="imgInput" accept="image/*" @change="onImageUpload" />
+          <div class="hint">Click to choose image texture</div>
+          <img v-if="form.imageDataUrl" :src="form.imageDataUrl" class="img-preview" />
+          <div v-else style="font-size:0.78rem;color:#445">No image selected</div>
+        </div>
+
         <button class="btn btn-primary" style="width:100%;margin-top:10px"
           @click="submitPanel" :disabled="!form.name.trim()">
           {{ editingId ? 'Update Panel' : '+ Add Panel' }}
@@ -449,12 +540,26 @@ new Vue({
       controls: null,
       meshMap: {},
       threeReady: false,
+
+      woodPresets: [
+        { id: 'oak',      label: 'Oak',      c1: [210,170, 95], c2: [150,100, 45], rings: 7,  grain: 0.28 },
+        { id: 'walnut',   label: 'Walnut',   c1: [100, 65, 30], c2: [ 55, 30, 10], rings: 11, grain: 0.38 },
+        { id: 'pine',     label: 'Pine',     c1: [235,210,150], c2: [190,155, 80], rings: 5,  grain: 0.18 },
+        { id: 'cherry',   label: 'Cherry',   c1: [175, 80, 50], c2: [105, 40, 20], rings: 9,  grain: 0.32 },
+        { id: 'mahogany', label: 'Mahogany', c1: [130, 55, 35], c2: [ 75, 25, 12], rings: 13, grain: 0.42 },
+        { id: 'birch',    label: 'Birch',    c1: [235,220,190], c2: [180,160,120], rings: 4,  grain: 0.12 },
+        { id: 'ebony',    label: 'Ebony',    c1: [ 40, 28, 18], c2: [ 20, 12,  6], rings: 15, grain: 0.45 },
+        { id: 'teak',     label: 'Teak',     c1: [185,130, 55], c2: [120, 75, 20], rings: 10, grain: 0.35 },
+      ],
     };
   },
 
   watch: {
     showNewProjectModal(val) {
       if (val) this.$nextTick(() => this.$refs.newProjectInput && this.$refs.newProjectInput.focus());
+    },
+    'form.materialType'(val) {
+      if (val === 'wood') this.$nextTick(() => this.drawAllSwatches());
     },
   },
 
@@ -472,7 +577,9 @@ new Vue({
     // ── Utilities ─────────────────────────────────────────────────────────────
     blankForm() {
       return { name: '', width: 600, height: 600, depth: 18,
-               px: 0, py: 0, pz: 0, rx: 0, ry: 0, rz: 0 };
+               px: 0, py: 0, pz: 0, rx: 0, ry: 0, rz: 0,
+               materialType: 'wood', color: '#4a90d9',
+               woodType: 'oak', imageDataUrl: null };
     },
 
     deg2rad(d) { return d * Math.PI / 180; },
@@ -524,9 +631,11 @@ new Vue({
       this.$nextTick(() => {
         this.initThree();
         this.initJsTree();
-        // Render existing panels
         this.panels.forEach(p => this.addMesh(p));
-        this.$nextTick(() => this.refreshJsTree());
+        this.$nextTick(() => {
+          this.refreshJsTree();
+          this.drawAllSwatches();
+        });
       });
     },
 
@@ -592,6 +701,7 @@ new Vue({
       const { projectId, ...fields } = panel;
       this.form = { ...fields };
       delete this.form.id;
+      if (this.form.materialType === 'wood') this.$nextTick(() => this.drawAllSwatches());
     },
 
     cancelEdit() {
@@ -706,9 +816,7 @@ new Vue({
       // (px,py,pz) in the form refers to that corner, not the centroid
       geo.translate(panel.width / 2, panel.height / 2, panel.depth / 2);
 
-      const hue = (panel.id * 47) % 360;
-      const color = new THREE.Color(`hsl(${hue}, 60%, 55%)`);
-      const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.35, metalness: 0.55 });
+      const mat = this.createMaterial(panel);
       const mesh = new THREE.Mesh(geo, mat);
       mesh.castShadow = true;
       mesh.receiveShadow = true;
@@ -774,6 +882,102 @@ new Vue({
       if (!inst) return;
       inst.deselect_all(true);
       if (id) inst.select_node(`panel-${id}`, true);
+    },
+
+    // ── Image upload ──────────────────────────────────────────────────────────
+    onImageUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => { this.form.imageDataUrl = ev.target.result; };
+      reader.readAsDataURL(file);
+    },
+
+    // ── Wood swatch drawing ───────────────────────────────────────────────────
+    drawAllSwatches() {
+      this.woodPresets.forEach(w => {
+        const refKey = 'swatch_' + w.id;
+        const el = this.$refs[refKey];
+        const div = Array.isArray(el) ? el[0] : el;
+        if (!div) return;
+        // Remove any old canvas
+        const old = div.querySelector('canvas');
+        if (old) old.remove();
+        const c = document.createElement('canvas');
+        c.width = 80; c.height = 42;
+        this.paintWoodCanvas(c, w, 80, 42);
+        div.insertBefore(c, div.firstChild);
+      });
+    },
+
+    paintWoodCanvas(canvas, cfg, W, H) {
+      const ctx = canvas.getContext('2d');
+      const img = ctx.createImageData(W, H);
+      const d = img.data;
+      const { c1, c2, rings, grain } = cfg;
+
+      function hash(x, y) {
+        return Math.abs((Math.sin(x * 127.1 + y * 311.7) * 43758.5453) % 1);
+      }
+      function smoothNoise(x, y) {
+        const xi = Math.floor(x), yi = Math.floor(y);
+        const xf = x - xi, yf = y - yi;
+        const ux = xf * xf * (3 - 2 * xf), uy = yf * yf * (3 - 2 * yf);
+        return hash(xi,yi)*(1-ux)*(1-uy) + hash(xi+1,yi)*ux*(1-uy)
+             + hash(xi,yi+1)*(1-ux)*uy   + hash(xi+1,yi+1)*ux*uy;
+      }
+      function fbm(x, y) {
+        return smoothNoise(x,y)*0.5 + smoothNoise(x*2,y*2)*0.25 + smoothNoise(x*4,y*4)*0.125;
+      }
+
+      for (let py = 0; py < H; py++) {
+        for (let px = 0; px < W; px++) {
+          const nx = px / W, ny = py / H;
+          const tx = fbm(nx*3.0, ny*3.0) - 0.5;
+          const ty = fbm(nx*3.0+5.2, ny*3.0+1.3) - 0.5;
+          const dx = (nx - 0.4) + tx * grain;
+          const dy = (ny - 0.5) * 0.7 + ty * grain;
+          const dist = Math.sqrt(dx*dx + dy*dy);
+          const ring = (Math.sin(dist * Math.PI * 2 * rings) + 1) / 2;
+          const streak = fbm(nx*12, ny*1.5) * 0.12;
+          const t = Math.max(0, Math.min(1, Math.pow(ring, 0.7) + streak));
+          const i = (py * W + px) * 4;
+          d[i]   = Math.round(c1[0] + (c2[0]-c1[0]) * t);
+          d[i+1] = Math.round(c1[1] + (c2[1]-c1[1]) * t);
+          d[i+2] = Math.round(c1[2] + (c2[2]-c1[2]) * t);
+          d[i+3] = 255;
+        }
+      }
+      ctx.putImageData(img, 0, 0);
+    },
+
+    // ── Material creation (used in addMesh) ───────────────────────────────────
+    createMaterial(panel) {
+      const type = panel.materialType || 'color';
+
+      if (type === 'wood') {
+        const cfg = this.woodPresets.find(w => w.id === (panel.woodType || 'oak')) || this.woodPresets[0];
+        const canvas = document.createElement('canvas');
+        canvas.width = 512; canvas.height = 512;
+        this.paintWoodCanvas(canvas, cfg, 512, 512);
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+        tex.repeat.set(panel.width / 300, panel.height / 300);
+        return new THREE.MeshStandardMaterial({ map: tex, roughness: 0.78, metalness: 0.0, envMapIntensity: 0.15 });
+      }
+
+      if (type === 'image' && panel.imageDataUrl) {
+        const tex = new THREE.TextureLoader().load(panel.imageDataUrl);
+        tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+        tex.repeat.set(panel.width / 400, panel.height / 400);
+        return new THREE.MeshStandardMaterial({ map: tex, roughness: 0.6, metalness: 0.05 });
+      }
+
+      // Solid color (default / fallback)
+      return new THREE.MeshStandardMaterial({
+        color: panel.color || '#4a90d9',
+        roughness: 0.35, metalness: 0.55,
+      });
     },
   },
 });
