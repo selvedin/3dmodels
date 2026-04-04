@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D Model Builder</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #1a1a2e;
+      color: #e0e0e0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background: #16213e;
+      padding: 12px 24px;
+      border-bottom: 2px solid #0f3460;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    header h1 {
+      font-size: 1.2rem;
+      color: #e94560;
+      font-weight: 600;
+      letter-spacing: 1px;
+    }
+
+    header span {
+      font-size: 0.75rem;
+      color: #888;
+    }
+
+    #app {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* LEFT PANEL - 3D Canvas */
+    .panel-left {
+      flex: 1;
+      position: relative;
+      background: #0d0d1a;
+      border-right: 2px solid #0f3460;
+    }
+
+    .panel-left canvas {
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    .canvas-overlay {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      background: rgba(0,0,0,0.5);
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      color: #aaa;
+      pointer-events: none;
+    }
+
+    /* RIGHT PANEL - Controls */
+    .panel-right {
+      width: 340px;
+      display: flex;
+      flex-direction: column;
+      background: #16213e;
+      overflow: hidden;
+    }
+
+    .panel-section {
+      padding: 16px;
+      border-bottom: 1px solid #0f3460;
+    }
+
+    .panel-section h2 {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: #e94560;
+      margin-bottom: 12px;
+    }
+
+    /* FORM */
+    .form-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .form-group {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .form-group label {
+      font-size: 0.68rem;
+      color: #888;
+      margin-bottom: 3px;
+      text-transform: uppercase;
+    }
+
+    .form-group input {
+      background: #0d1b36;
+      border: 1px solid #0f3460;
+      color: #e0e0e0;
+      padding: 5px 8px;
+      border-radius: 4px;
+      font-size: 0.82rem;
+      width: 100%;
+      transition: border-color 0.2s;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: #e94560;
+    }
+
+    .form-group input::-webkit-inner-spin-button { opacity: 0.4; }
+
+    .section-label {
+      font-size: 0.7rem;
+      color: #557;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin: 8px 0 4px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-weight: 600;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-primary {
+      background: #e94560;
+      color: #fff;
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    .btn-primary:hover:not(:disabled) { opacity: 0.85; }
+
+    .btn-sm {
+      padding: 3px 8px;
+      font-size: 0.72rem;
+    }
+
+    .btn-edit { background: #0f3460; color: #e0e0e0; }
+    .btn-edit:hover { background: #1a4a8a; }
+    .btn-delete { background: #3d1a1a; color: #e94560; }
+    .btn-delete:hover { background: #5a2020; }
+
+    /* PARTS TREE */
+    .parts-tree {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+    }
+
+    .parts-tree h2 {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: #e94560;
+      margin-bottom: 10px;
+    }
+
+    .empty-state {
+      color: #445;
+      font-size: 0.78rem;
+      text-align: center;
+      padding: 24px 0;
+    }
+
+    /* status bar */
+    footer {
+      background: #0f1929;
+      padding: 4px 16px;
+      font-size: 0.7rem;
+      color: #445;
+      border-top: 1px solid #0f3460;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>3D Model Builder</h1>
+  <span>Vue.js 2 + Three.js + jstree</span>
+</header>
+
+<div id="app">
+
+  <!-- LEFT: 3D Canvas -->
+  <div class="panel-left">
+    <canvas id="three-canvas"></canvas>
+    <div class="canvas-overlay">Left-drag: rotate &nbsp;|&nbsp; Scroll: zoom &nbsp;|&nbsp; Right-drag: pan</div>
+  </div>
+
+  <!-- RIGHT: Controls -->
+  <div class="panel-right">
+
+    <!-- Add / Edit Form -->
+    <div class="panel-section">
+      <h2>{{ editingId ? 'Edit Panel' : 'Add Panel' }}</h2>
+
+      <div class="form-group" style="margin-bottom:8px">
+        <label>Name</label>
+        <input v-model="form.name" placeholder="e.g. Front Wall" />
+      </div>
+
+      <div class="section-label">Dimensions</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Width</label>
+          <input type="number" v-model.number="form.width" min="0.1" step="0.1" />
+        </div>
+        <div class="form-group">
+          <label>Height</label>
+          <input type="number" v-model.number="form.height" min="0.1" step="0.1" />
+        </div>
+        <div class="form-group">
+          <label>Depth</label>
+          <input type="number" v-model.number="form.depth" min="0.1" step="0.1" />
+        </div>
+      </div>
+
+      <div class="section-label">Position</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>X</label>
+          <input type="number" v-model.number="form.px" step="0.1" />
+        </div>
+        <div class="form-group">
+          <label>Y</label>
+          <input type="number" v-model.number="form.py" step="0.1" />
+        </div>
+        <div class="form-group">
+          <label>Z</label>
+          <input type="number" v-model.number="form.pz" step="0.1" />
+        </div>
+      </div>
+
+      <div class="section-label">Rotation (degrees)</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Rx</label>
+          <input type="number" v-model.number="form.rx" step="1" />
+        </div>
+        <div class="form-group">
+          <label>Ry</label>
+          <input type="number" v-model.number="form.ry" step="1" />
+        </div>
+        <div class="form-group">
+          <label>Rz</label>
+          <input type="number" v-model.number="form.rz" step="1" />
+        </div>
+      </div>
+
+      <button class="btn btn-primary" @click="submitPanel" :disabled="!form.name.trim()">
+        {{ editingId ? 'Update Panel' : '+ Add Panel' }}
+      </button>
+      <button v-if="editingId" class="btn btn-sm btn-edit" style="width:100%;margin-top:6px" @click="cancelEdit">
+        Cancel
+      </button>
+    </div>
+
+    <!-- Parts List (jstree target) -->
+    <div class="parts-tree">
+      <h2>Scene Panels ({{ panels.length }})</h2>
+      <div v-if="panels.length === 0" class="empty-state">
+        No panels yet.<br>Add your first panel above.
+      </div>
+      <div id="jstree-container"></div>
+    </div>
+
+  </div>
+</div>
+
+<footer>
+  <span>Panels: {{ panels.length }}</span>
+</footer>
+
+<!-- Dependencies -->
+<script src="https://cdn.jsdelivr.net/npm/vue@2.7.16/dist/vue.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.16/themes/default/style.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.16/jstree.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.1/examples/js/controls/OrbitControls.js"></script>
+
+<script>
+// ── Vue App ──────────────────────────────────────────────────────────────────
+new Vue({
+  el: '#app',
+
+  data() {
+    return {
+      panels: [],          // array of panel objects
+      editingId: null,
+      nextId: 1,
+
+      form: this.blankForm(),
+
+      // Three.js handles
+      scene: null,
+      camera: null,
+      renderer: null,
+      controls: null,
+      meshMap: {},         // id → THREE.Mesh
+    };
+  },
+
+  mounted() {
+    this.initThree();
+    this.initJsTree();
+    window.addEventListener('resize', this.onResize);
+  },
+
+  beforeDestroy() {
+    window.removeEventListener('resize', this.onResize);
+    this.renderer && this.renderer.dispose();
+  },
+
+  methods: {
+    // ── Helpers ──────────────────────────────────────────────────────────────
+    blankForm() {
+      return { name: '', width: 2, height: 2, depth: 0.1,
+               px: 0, py: 0, pz: 0, rx: 0, ry: 0, rz: 0 };
+    },
+
+    deg2rad(d) { return d * Math.PI / 180; },
+
+    // ── Three.js ─────────────────────────────────────────────────────────────
+    initThree() {
+      const canvas = document.getElementById('three-canvas');
+      const W = canvas.parentElement.clientWidth;
+      const H = canvas.parentElement.clientHeight;
+
+      // Scene
+      this.scene = new THREE.Scene();
+      this.scene.background = new THREE.Color(0x0d0d1a);
+      this.scene.fog = new THREE.Fog(0x0d0d1a, 30, 80);
+
+      // Camera
+      this.camera = new THREE.PerspectiveCamera(50, W / H, 0.1, 200);
+      this.camera.position.set(6, 5, 10);
+
+      // Renderer
+      this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+      this.renderer.setSize(W, H);
+      this.renderer.setPixelRatio(window.devicePixelRatio);
+      this.renderer.shadowMap.enabled = true;
+      this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      this.renderer.toneMappingExposure = 1.2;
+
+      // Lights
+      const ambient = new THREE.AmbientLight(0xffffff, 0.4);
+      this.scene.add(ambient);
+
+      const dirLight = new THREE.DirectionalLight(0xffeedd, 1.4);
+      dirLight.position.set(8, 14, 6);
+      dirLight.castShadow = true;
+      dirLight.shadow.mapSize.set(2048, 2048);
+      dirLight.shadow.camera.near = 0.5;
+      dirLight.shadow.camera.far = 80;
+      dirLight.shadow.camera.left = -20;
+      dirLight.shadow.camera.right = 20;
+      dirLight.shadow.camera.top = 20;
+      dirLight.shadow.camera.bottom = -20;
+      this.scene.add(dirLight);
+
+      const fillLight = new THREE.DirectionalLight(0x8899ff, 0.5);
+      fillLight.position.set(-6, 4, -8);
+      this.scene.add(fillLight);
+
+      const pointLight = new THREE.PointLight(0xe94560, 0.6, 30);
+      pointLight.position.set(-4, 6, 4);
+      this.scene.add(pointLight);
+
+      // Ground grid
+      const gridHelper = new THREE.GridHelper(20, 20, 0x1a2a4a, 0x1a2a4a);
+      this.scene.add(gridHelper);
+
+      // Ground plane (shadow receiver)
+      const groundGeo = new THREE.PlaneGeometry(40, 40);
+      const groundMat = new THREE.MeshLambertMaterial({ color: 0x0d1420, transparent: true, opacity: 0.8 });
+      const ground = new THREE.Mesh(groundGeo, groundMat);
+      ground.rotation.x = -Math.PI / 2;
+      ground.position.y = -0.01;
+      ground.receiveShadow = true;
+      this.scene.add(ground);
+
+      // Axes helper (subtle)
+      const axes = new THREE.AxesHelper(3);
+      axes.position.y = 0.01;
+      this.scene.add(axes);
+
+      // OrbitControls
+      this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+      this.controls.enableDamping = true;
+      this.controls.dampingFactor = 0.07;
+      this.controls.minDistance = 1;
+      this.controls.maxDistance = 60;
+
+      // Animate
+      const animate = () => {
+        requestAnimationFrame(animate);
+        this.controls.update();
+        this.renderer.render(this.scene, this.camera);
+      };
+      animate();
+    },
+
+    onResize() {
+      const container = document.querySelector('.panel-left');
+      const W = container.clientWidth;
+      const H = container.clientHeight;
+      this.camera.aspect = W / H;
+      this.camera.updateProjectionMatrix();
+      this.renderer.setSize(W, H);
+    },
+
+    addMesh(panel) {
+      const geo = new THREE.BoxGeometry(panel.width, panel.height, panel.depth);
+
+      // Realistic PBR-like material with edge highlight
+      const hue = (panel.id * 47) % 360;
+      const color = new THREE.Color(`hsl(${hue}, 60%, 55%)`);
+
+      const mat = new THREE.MeshStandardMaterial({
+        color,
+        roughness: 0.45,
+        metalness: 0.3,
+      });
+
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.position.set(panel.px, panel.py, panel.pz);
+      mesh.rotation.set(
+        this.deg2rad(panel.rx),
+        this.deg2rad(panel.ry),
+        this.deg2rad(panel.rz)
+      );
+
+      // Wireframe outline
+      const edgesGeo = new THREE.EdgesGeometry(geo);
+      const edgesMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.15 });
+      const edges = new THREE.LineSegments(edgesGeo, edgesMat);
+      mesh.add(edges);
+
+      this.scene.add(mesh);
+      this.meshMap[panel.id] = mesh;
+    },
+
+    updateMesh(panel) {
+      const old = this.meshMap[panel.id];
+      if (old) { this.scene.remove(old); old.geometry.dispose(); old.material.dispose(); }
+      this.addMesh(panel);
+    },
+
+    removeMesh(id) {
+      const mesh = this.meshMap[id];
+      if (mesh) {
+        this.scene.remove(mesh);
+        mesh.geometry.dispose();
+        mesh.material.dispose();
+        delete this.meshMap[id];
+      }
+    },
+
+    // ── jstree ────────────────────────────────────────────────────────────────
+    initJsTree() {
+      const self = this;
+      $('#jstree-container').jstree({
+        core: {
+          data: [],
+          themes: { variant: 'large', dots: true, icons: true },
+          check_callback: true,
+        },
+        plugins: ['wholerow', 'types'],
+        types: {
+          panel: { icon: 'jstree-icon jstree-file' },
+        },
+      });
+
+      $('#jstree-container').on('select_node.jstree', function(e, data) {
+        const id = parseInt(data.node.id.replace('panel-', ''));
+        self.startEdit(id);
+      });
+    },
+
+    refreshJsTree() {
+      const nodes = this.panels.map(p => ({
+        id: `panel-${p.id}`,
+        parent: '#',
+        text: `<b>${p.name}</b> <span style="color:#667;font-size:0.75em">${p.width}×${p.height}×${p.depth}</span>`,
+        type: 'panel',
+      }));
+      const inst = $('#jstree-container').jstree(true);
+      inst.settings.core.data = nodes;
+      inst.refresh();
+    },
+
+    highlightNode(id) {
+      const inst = $('#jstree-container').jstree(true);
+      inst.deselect_all(true);
+      if (id) inst.select_node(`panel-${id}`, true);
+    },
+
+    // ── Panel CRUD ─────────────────────────────────────────────────────────────
+    submitPanel() {
+      if (!this.form.name.trim()) return;
+
+      if (this.editingId) {
+        const idx = this.panels.findIndex(p => p.id === this.editingId);
+        if (idx !== -1) {
+          const updated = { ...this.panels[idx], ...this.form, id: this.editingId };
+          this.$set(this.panels, idx, updated);
+          this.updateMesh(updated);
+        }
+        this.editingId = null;
+      } else {
+        const panel = { id: this.nextId++, ...this.form };
+        this.panels.push(panel);
+        this.addMesh(panel);
+      }
+
+      this.form = this.blankForm();
+      this.$nextTick(() => this.refreshJsTree());
+    },
+
+    startEdit(id) {
+      const panel = this.panels.find(p => p.id === id);
+      if (!panel) return;
+      this.editingId = id;
+      this.form = { ...panel };
+      delete this.form.id;
+    },
+
+    cancelEdit() {
+      this.editingId = null;
+      this.form = this.blankForm();
+      this.highlightNode(null);
+    },
+
+    deletePanel(id) {
+      this.panels = this.panels.filter(p => p.id !== id);
+      this.removeMesh(id);
+      if (this.editingId === id) { this.editingId = null; this.form = this.blankForm(); }
+      this.$nextTick(() => this.refreshJsTree());
+    },
+  }
+});
+</script>
+</body>
+</html>
