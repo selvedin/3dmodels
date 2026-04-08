@@ -12,7 +12,15 @@ new Vue({
       panels: [],
       editingId: null,
       form: createPanel(),
+
+      currentLang: I18n.getLang(),
     };
+  },
+
+  computed: {
+    availableLangs() {
+      return I18n.getAvailableLangs();
+    },
   },
 
   watch: {
@@ -33,6 +41,18 @@ new Vue({
 
   methods: {
     formatDate,
+
+    // Translate a key using the current language.
+    // Accessing this.currentLang makes Vue track it as a reactive dependency,
+    // so the template re-renders automatically on language change.
+    t(key, params) {
+      return I18n.t(key, this.currentLang, params);
+    },
+
+    setLang(code) {
+      I18n.setLang(code);
+      this.currentLang = code;
+    },
 
     onResize() {
       if (!this.currentProject) return;
@@ -66,7 +86,7 @@ new Vue({
     },
 
     async deleteProject(proj) {
-      if (!confirm(`Delete project "${proj.name}" and all its panels?`)) return;
+      if (!confirm(this.t('confirmDeleteProject', { name: proj.name }))) return;
       await PanelRepository.removeByProject(proj.id);
       await ProjectRepository.remove(proj.id);
       await this.loadProjects();
@@ -175,7 +195,7 @@ new Vue({
       inst.settings.core.data = this.panels.map(p => ({
         id: `panel-${p.id}`,
         parent: '#',
-        text: `<b>${p.name}</b> <span style="color:#667;font-size:0.75em">${p.width}×${p.height}×${p.depth} mm</span>`,
+        text: `<b>${p.name}</b> <span style="color:#667;font-size:0.75em">${p.width}\u00d7${p.height}\u00d7${p.depth} mm</span>`,
         type: 'panel',
       }));
       inst.refresh();
@@ -223,11 +243,11 @@ new Vue({
       try {
         data = JSON.parse(await file.text());
       } catch {
-        alert('Invalid JSON file.');
+        alert(this.t('invalidJsonFile'));
         return;
       }
       if (!data.name || !Array.isArray(data.panels)) {
-        alert('Invalid project file: missing "name" or "panels" fields.');
+        alert(this.t('invalidProjectFile'));
         return;
       }
       const projectId = await ProjectRepository.add({ name: data.name, createdAt: Date.now() });
