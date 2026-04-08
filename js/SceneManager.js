@@ -24,6 +24,7 @@ const SceneManager = (() => {
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.outputEncoding = THREE.sRGBEncoding;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = SCENE_CONFIG.TONE_MAPPING_EXPOSURE;
 
@@ -48,9 +49,12 @@ const SceneManager = (() => {
   }
 
   function _addLights() {
-    scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+    // RoomEnvironment IBL already provides ambient — a subtle hemisphere adds
+    // sky/ground colour variation without doubling the base illumination.
+    scene.add(new THREE.HemisphereLight(0xddeeff, 0x221100, 0.25));
 
-    const dirLight = new THREE.DirectionalLight(0xffeedd, 1.4);
+    // Key light — sun-like, warm but not blown out
+    const dirLight = new THREE.DirectionalLight(0xfff4e0, 0.85);
     dirLight.position.set(4000, 8000, 3000);
     dirLight.castShadow = true;
     dirLight.shadow.mapSize.set(SCENE_CONFIG.SHADOW_MAP_SIZE, SCENE_CONFIG.SHADOW_MAP_SIZE);
@@ -60,13 +64,16 @@ const SceneManager = (() => {
     dirLight.shadow.camera.right = 4000;
     dirLight.shadow.camera.top = 4000;
     dirLight.shadow.camera.bottom = -4000;
+    dirLight.shadow.bias = -0.001;
     scene.add(dirLight);
 
-    const fillLight = new THREE.DirectionalLight(0x8899ff, 0.5);
+    // Fill light — cool bounce from opposite side, kept subtle
+    const fillLight = new THREE.DirectionalLight(0x99aacc, 0.25);
     fillLight.position.set(-3000, 2000, -4000);
     scene.add(fillLight);
 
-    const pointLight = new THREE.PointLight(0xe94560, 0.8, 12000);
+    // Accent point — toned down so it doesn't overpower textured surfaces
+    const pointLight = new THREE.PointLight(0xe94560, 0.4, 12000);
     pointLight.position.set(-2000, 3000, 2000);
     scene.add(pointLight);
   }
@@ -105,16 +112,27 @@ const SceneManager = (() => {
   function _buildMaterial(panel) {
     if (panel.materialType === 'image' && panel.imageDataUrl) {
       const tex = new THREE.TextureLoader().load(panel.imageDataUrl);
+      // Mark texture as sRGB so Three.js linearises it correctly during rendering.
+      // Without this, ACESFilmic + sRGBEncoding output double-corrects the colour,
+      // making textured surfaces appear blown out.
+      tex.encoding = THREE.sRGBEncoding;
       tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
       tex.repeat.set(
         panel.width  / SCENE_CONFIG.TEXTURE_REPEAT_SCALE,
         panel.height / SCENE_CONFIG.TEXTURE_REPEAT_SCALE
       );
-      return new THREE.MeshStandardMaterial({ map: tex, roughness: 0.6, metalness: 0.05 });
+      return new THREE.MeshStandardMaterial({
+        map: tex,
+        roughness: 0.8,     // wood/laminate surfaces are diffuse, not glossy
+        metalness: 0.0,
+        envMapIntensity: 0.6, // reduce IBL contribution so texture colour reads true
+      });
     }
     return new THREE.MeshStandardMaterial({
       color: panel.color || DEFAULT_PANEL.color,
-      roughness: 0.35, metalness: 0.55,
+      roughness: 0.4,
+      metalness: 0.25,      // panels are painted/lacquered, not metal
+      envMapIntensity: 0.8,
     });
   }
 
