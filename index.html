@@ -26,31 +26,39 @@
 
   <!-- ── HEADER ─────────────────────────────────────────── -->
   <header>
-    <h1>3D Model Builder</h1>
+    <h1>{{ t('appTitle') }}</h1>
     <div class="breadcrumb" v-if="currentProject">
       <span class="sep">/</span>
       <span class="proj-name">{{ currentProject.name }}</span>
     </div>
     <div class="header-spacer"></div>
-    <button v-if="currentProject" class="btn btn-secondary btn-sm" @click="exportProject(currentProject)" style="margin-right:6px">&#8595; Export JSON</button>
-    <button v-if="currentProject" class="btn btn-back" @click="backToProjects">&#8592; Projects</button>
+    <button v-if="currentProject" class="btn btn-secondary btn-sm" @click="exportProject(currentProject)" style="margin-right:6px">{{ t('exportJson') }}</button>
+    <button v-if="currentProject" class="btn btn-back" @click="backToProjects">{{ t('backToProjects') }}</button>
+    <div class="lang-switcher">
+      <button
+        v-for="lang in availableLangs"
+        :key="lang"
+        :class="['lang-btn', { active: currentLang === lang }]"
+        @click="setLang(lang)"
+      >{{ lang.toUpperCase() }}</button>
+    </div>
   </header>
 
   <!-- ── LANDING: PROJECT LIST ──────────────────────────── -->
   <div id="landing" v-if="!currentProject">
     <div class="landing-toolbar">
-      <h2>Your Projects ({{ projects.length }})</h2>
+      <h2>{{ t('yourProjects') }} ({{ projects.length }})</h2>
       <div style="display:flex;gap:8px;align-items:center">
         <input type="file" ref="importInput" accept=".json,application/json" style="display:none" @change="importFromJson" />
-        <button class="btn btn-secondary" @click="$refs.importInput.click()">&#8595; Import JSON</button>
-        <button class="btn btn-primary" @click="showNewProjectModal = true">+ New Project</button>
+        <button class="btn btn-secondary" @click="$refs.importInput.click()">{{ t('importJson') }}</button>
+        <button class="btn btn-primary" @click="showNewProjectModal = true">{{ t('newProject') }}</button>
       </div>
     </div>
 
     <div class="projects-grid">
       <div v-if="projects.length === 0" class="empty-projects">
         <span>&#128190;</span>
-        No projects yet. Create your first one!
+        {{ t('noProjects') }}
       </div>
 
       <div
@@ -60,12 +68,12 @@
         @click="openProject(proj)"
       >
         <div class="card-name">{{ proj.name }}</div>
-        <div class="card-meta">Created: {{ formatDate(proj.createdAt) }}</div>
-        <div class="card-panels">{{ panelCounts[proj.id] || 0 }} panel(s)</div>
+        <div class="card-meta">{{ t('created') }} {{ formatDate(proj.createdAt) }}</div>
+        <div class="card-panels">{{ t('panelCount', { count: panelCounts[proj.id] || 0 }) }}</div>
         <div class="card-actions" @click.stop>
-          <button class="btn btn-secondary btn-sm" @click="openProject(proj)">Open</button>
-          <button class="btn btn-secondary btn-sm" @click="exportProject(proj)">Export</button>
-          <button class="btn btn-danger btn-sm" @click="deleteProject(proj)">Delete</button>
+          <button class="btn btn-secondary btn-sm" @click="openProject(proj)">{{ t('open') }}</button>
+          <button class="btn btn-secondary btn-sm" @click="exportProject(proj)">{{ t('export') }}</button>
+          <button class="btn btn-danger btn-sm" @click="deleteProject(proj)">{{ t('delete') }}</button>
         </div>
       </div>
     </div>
@@ -77,39 +85,37 @@
     <!-- Left: 3D Canvas -->
     <div class="panel-left">
       <canvas id="three-canvas"></canvas>
-      <div class="canvas-overlay">
-        Left-drag: rotate &nbsp;|&nbsp; Scroll: zoom &nbsp;|&nbsp; Right-drag: pan &nbsp;|&nbsp; Grid: 5000×5000 mm
-      </div>
+      <div class="canvas-overlay">{{ t('canvasHint') }}</div>
     </div>
 
     <!-- Right: Controls -->
     <div class="panel-right">
 
       <div class="panel-section">
-        <h2>{{ editingId ? 'Edit Panel' : 'Add Panel' }}</h2>
+        <h2>{{ editingId ? t('editPanel') : t('addPanel') }}</h2>
 
         <div class="form-group" style="margin-bottom:8px">
-          <label>Name</label>
-          <input v-model="form.name" placeholder="e.g. Front Wall" @keyup.enter="submitPanel" />
+          <label>{{ t('name') }}</label>
+          <input v-model="form.name" :placeholder="t('namePlaceholder')" @keyup.enter="submitPanel" />
         </div>
 
-        <div class="section-label">Dimensions (mm)</div>
+        <div class="section-label">{{ t('dimensions') }}</div>
         <div class="form-row">
           <div class="form-group">
-            <label>Width</label>
+            <label>{{ t('width') }}</label>
             <input type="number" v-model.number="form.width" min="1" step="1" />
           </div>
           <div class="form-group">
-            <label>Height</label>
+            <label>{{ t('height') }}</label>
             <input type="number" v-model.number="form.height" min="1" step="1" />
           </div>
           <div class="form-group">
-            <label>Depth</label>
+            <label>{{ t('depth') }}</label>
             <input type="number" v-model.number="form.depth" min="1" step="1" />
           </div>
         </div>
 
-        <div class="section-label">Position (mm)</div>
+        <div class="section-label">{{ t('position') }}</div>
         <div class="form-row">
           <div class="form-group">
             <label>X</label>
@@ -125,7 +131,7 @@
           </div>
         </div>
 
-        <div class="section-label">Rotation (degrees)</div>
+        <div class="section-label">{{ t('rotation') }}</div>
         <div class="form-row">
           <div class="form-group">
             <label>Rx</label>
@@ -141,12 +147,12 @@
           </div>
         </div>
 
-        <div class="section-label">Material</div>
+        <div class="section-label">{{ t('material') }}</div>
 
         <!-- Type tabs -->
         <div class="mat-tabs">
-          <div class="mat-tab" :class="{active: form.materialType==='color'}" @click="form.materialType='color'">Color</div>
-          <div class="mat-tab" :class="{active: form.materialType==='image'}" @click="form.materialType='image'">Image</div>
+          <div class="mat-tab" :class="{active: form.materialType==='color'}" @click="form.materialType='color'">{{ t('color') }}</div>
+          <div class="mat-tab" :class="{active: form.materialType==='image'}" @click="form.materialType='image'">{{ t('image') }}</div>
         </div>
 
         <!-- Solid color -->
@@ -158,26 +164,26 @@
         <!-- Custom image -->
         <div v-if="form.materialType==='image'" class="img-upload-area" @click="$refs.imgInput.click()">
           <input type="file" ref="imgInput" accept="image/*" @change="onImageUpload" />
-          <div class="hint">Click to choose image texture</div>
+          <div class="hint">{{ t('chooseImageTexture') }}</div>
           <img v-if="form.imageDataUrl" :src="form.imageDataUrl" class="img-preview" />
-          <div v-else style="font-size:0.78rem;color:#445">No image selected</div>
+          <div v-else style="font-size:0.78rem;color:#445">{{ t('noImageSelected') }}</div>
         </div>
 
         <button class="btn btn-primary" style="width:100%;margin-top:10px"
           @click="submitPanel" :disabled="!form.name.trim()">
-          {{ editingId ? 'Update Panel' : '+ Add Panel' }}
+          {{ editingId ? t('updatePanel') : t('addPanelBtn') }}
         </button>
         <div v-if="editingId" style="display:flex;gap:6px;margin-top:6px">
-          <button class="btn btn-secondary btn-sm" style="flex:1" @click="cancelEdit">Cancel</button>
-          <button class="btn btn-danger btn-sm" style="flex:1" @click="deletePanel(editingId)">Delete Panel</button>
+          <button class="btn btn-secondary btn-sm" style="flex:1" @click="cancelEdit">{{ t('cancel') }}</button>
+          <button class="btn btn-danger btn-sm" style="flex:1" @click="deletePanel(editingId)">{{ t('deletePanel') }}</button>
         </div>
       </div>
 
       <!-- Parts tree -->
       <div class="parts-tree">
-        <h2>Panels ({{ panels.length }})</h2>
+        <h2>{{ t('panelsList') }} ({{ panels.length }})</h2>
         <div v-if="panels.length === 0" class="empty-state">
-          No panels yet.<br>Add your first panel above.
+          {{ t('noPanelsLine1') }}<br>{{ t('noPanelsLine2') }}
         </div>
         <div id="jstree-container"></div>
       </div>
@@ -187,24 +193,24 @@
 
   <!-- ── FOOTER ─────────────────────────────────────────── -->
   <footer>
-    <span v-if="currentProject">Project: {{ currentProject.name }} &nbsp;|&nbsp; Panels: {{ panels.length }}</span>
-    <span v-else>Projects: {{ projects.length }}</span>
+    <span v-if="currentProject">{{ t('footerProject', { name: currentProject.name, count: panels.length }) }}</span>
+    <span v-else>{{ t('footerProjects', { count: projects.length }) }}</span>
   </footer>
 
   <!-- ── NEW PROJECT MODAL ──────────────────────────────── -->
   <div class="modal-overlay" v-if="showNewProjectModal" @click.self="showNewProjectModal = false">
     <div class="modal">
-      <h3>New Project</h3>
+      <h3>{{ t('newProjectTitle') }}</h3>
       <input
         v-model="newProjectName"
-        placeholder="Project name..."
+        :placeholder="t('projectNamePlaceholder')"
         ref="newProjectInput"
         @keyup.enter="createProject"
         maxlength="80"
       />
       <div class="modal-actions">
-        <button class="btn btn-secondary" @click="showNewProjectModal = false">Cancel</button>
-        <button class="btn btn-primary" @click="createProject" :disabled="!newProjectName.trim()">Create</button>
+        <button class="btn btn-secondary" @click="showNewProjectModal = false">{{ t('cancel') }}</button>
+        <button class="btn btn-primary" @click="createProject" :disabled="!newProjectName.trim()">{{ t('create') }}</button>
       </div>
     </div>
   </div>
@@ -218,6 +224,9 @@
 <script src="js/domain.js"></script>
 <script src="js/EventBus.js"></script>
 <script src="js/SceneManager.js"></script>
+<script src="js/locales/en.js"></script>
+<script src="js/locales/bs.js"></script>
+<script src="js/i18n.js"></script>
 <script src="js/app.js"></script>
 
 </body>
