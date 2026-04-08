@@ -304,6 +304,7 @@
       <span class="proj-name">{{ currentProject.name }}</span>
     </div>
     <div class="header-spacer"></div>
+    <button v-if="currentProject" class="btn btn-secondary btn-sm" @click="exportProject(currentProject)" style="margin-right:6px">&#8595; Export JSON</button>
     <button v-if="currentProject" class="btn btn-back" @click="backToProjects">&#8592; Projects</button>
   </header>
 
@@ -311,7 +312,11 @@
   <div id="landing" v-if="!currentProject">
     <div class="landing-toolbar">
       <h2>Your Projects ({{ projects.length }})</h2>
-      <button class="btn btn-primary" @click="showNewProjectModal = true">+ New Project</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="file" ref="importInput" accept=".json,application/json" style="display:none" @change="importFromJson" />
+        <button class="btn btn-secondary" @click="$refs.importInput.click()">&#8595; Import JSON</button>
+        <button class="btn btn-primary" @click="showNewProjectModal = true">+ New Project</button>
+      </div>
     </div>
 
     <div class="projects-grid">
@@ -331,6 +336,7 @@
         <div class="card-panels">{{ panelCounts[proj.id] || 0 }} panel(s)</div>
         <div class="card-actions" @click.stop>
           <button class="btn btn-secondary btn-sm" @click="openProject(proj)">Open</button>
+          <button class="btn btn-secondary btn-sm" @click="exportProject(proj)">Export</button>
           <button class="btn btn-danger btn-sm" @click="deleteProject(proj)">Delete</button>
         </div>
       </div>
@@ -844,6 +850,49 @@ new Vue({
       const reader = new FileReader();
       reader.onload = ev => { this.form.imageDataUrl = ev.target.result; };
       reader.readAsDataURL(file);
+    },
+
+    // ── Export / Import JSON ──────────────────────────────────────────────────
+    async exportProject(proj) {
+      const panels = await db.panels.where('projectId').equals(proj.id).toArray();
+      const payload = {
+        name: proj.name,
+        createdAt: proj.createdAt,
+        exportedAt: Date.now(),
+        panels: panels.map(({ id, projectId, ...rest }) => rest),
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${proj.name.replace(/[^a-z0-9]/gi, '_')}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    },
+
+    async importFromJson(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      this.$refs.importInput.value = '';
+      let data;
+      try {
+        data = JSON.parse(await file.text());
+      } catch {
+        alert('Invalid JSON file.');
+        return;
+      }
+      if (!data.name || !Array.isArray(data.panels)) {
+        alert('Invalid project file: missing "name" or "panels" fields.');
+        return;
+      }
+      const projectId = await db.projects.add({ name: data.name, createdAt: Date.now() });
+      for (const panel of data.panels) {
+        const { id, ...panelData } = panel;
+        await db.panels.add({ ...panelData, projectId });
+      }
+      await this.loadProjects();
+      const proj = await db.projects.get(projectId);
+      this.openProject(proj);
     },
 
     // ── Material creation (used in addMesh) ───────────────────────────────────
