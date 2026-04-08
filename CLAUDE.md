@@ -14,6 +14,65 @@ No build system, no bundler, no npm. All source is inline in `index.html`.
 
 ---
 
+## File & Folder Structure
+
+When the project grows beyond a single comfortable file, split it using this layout:
+
+```
+3dmodel/
+├── index.html              # Entry point — markup and <script>/<link> imports only
+│
+├── css/
+│   └── main.css            # All styles (split into layout.css / components.css / theme.css if it grows large)
+│
+├── js/
+│   ├── constants.js        # DEFAULT_PANEL, SCENE_CONFIG — no dependencies
+│   ├── db.js               # Dexie init — depends on constants
+│   ├── repositories.js     # ProjectRepository, PanelRepository — depends on db
+│   ├── domain.js           # createPanel, deg2rad, formatDate — pure, no dependencies
+│   ├── EventBus.js         # EventBus singleton — depends on Vue being loaded
+│   ├── SceneManager.js     # Three.js revealing module — depends on constants, domain
+│   └── app.js              # Vue instance — loaded last, depends on everything above
+│
+├── images/
+│   └── (static textures, icons — user-uploaded textures are stored in IndexedDB as base64)
+│
+└── CLAUDE.md
+```
+
+### Load order in index.html
+Classic scripts share a global scope — load order is the dependency graph:
+
+```html
+<link rel="stylesheet" href="css/main.css" />
+
+<!-- vendor -->
+<script src="https://cdn.jsdelivr.net/npm/vue@2.7.16/dist/vue.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dexie@3.2.4/dist/dexie.min.js"></script>
+<script src="...three.min.js"></script>
+<script src="...OrbitControls.js"></script>
+<script src="...RoomEnvironment.js"></script>
+<script src="...jquery.min.js"></script>
+<script src="...jstree.min.js"></script>
+
+<!-- app — order matches dependency direction -->
+<script src="js/constants.js"></script>
+<script src="js/db.js"></script>
+<script src="js/repositories.js"></script>
+<script src="js/domain.js"></script>
+<script src="js/EventBus.js"></script>
+<script src="js/SceneManager.js"></script>
+<script src="js/app.js"></script>
+```
+
+### Rules when splitting files
+- Each file declares only what its name says — `SceneManager.js` contains only `SceneManager`.
+- No `import`/`export` — everything is a `const`/`function` assigned to the global scope.
+- Do not add `type="module"` unless the project deliberately moves to ES modules (which requires a server for local dev due to CORS on `file://`).
+- Keep `index.html` markup-only once split; no inline `<script>` blocks.
+
+---
+
 ## Architecture Principles
 
 ### Separation of Concerns
