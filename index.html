@@ -181,6 +181,15 @@
           <div v-else style="font-size:0.78rem;color:#445">{{ t('noImageSelected') }}</div>
         </div>
 
+        <!-- Texture orientation -->
+        <div v-if="form.materialType==='image' && form.imageDataUrl">
+          <div class="section-label">{{ t('textureOrientation') }}</div>
+          <div class="mat-tabs">
+            <div class="mat-tab" :class="{active: form.textureOrientation==='horizontal'}" @click="form.textureOrientation='horizontal'">{{ t('horizontal') }}</div>
+            <div class="mat-tab" :class="{active: form.textureOrientation==='vertical'}" @click="form.textureOrientation='vertical'">{{ t('vertical') }}</div>
+          </div>
+        </div>
+
         <button class="btn btn-primary" style="width:100%;margin-top:10px"
           @click="submitPanel" :disabled="!form.name.trim()">
           {{ editingId ? t('updatePanel') : t('addPanelBtn') }}
