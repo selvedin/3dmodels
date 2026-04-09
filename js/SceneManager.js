@@ -117,6 +117,10 @@ const SceneManager = (() => {
       // making textured surfaces appear blown out.
       tex.encoding = THREE.sRGBEncoding;
       tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+      if (panel.textureOrientation === 'vertical') {
+        tex.rotation = Math.PI / 2;
+        tex.center.set(0.5, 0.5);
+      }
       tex.repeat.set(
         panel.width  / SCENE_CONFIG.TEXTURE_REPEAT_SCALE,
         panel.height / SCENE_CONFIG.TEXTURE_REPEAT_SCALE
