@@ -221,10 +221,35 @@ header .breadcrumb .proj-name { color: #aac; }
 .btn-edit-sm:hover { background: #1a4a8a; }
 
 .parts-tree { flex: 1; overflow-y: auto; padding: 12px; }
-.parts-tree h2 {
-  font-size: 0.8rem; text-transform: uppercase;
-  letter-spacing: 1.5px; color: #e94560; margin-bottom: 10px;
+
+.parts-tree-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
 }
+.parts-tree-header h2 {
+  font-size: 0.8rem; text-transform: uppercase;
+  letter-spacing: 1.5px; color: #e94560; margin: 0;
+}
+
+.group-info-bar {
+  display: flex; align-items: center; gap: 6px;
+  background: #0f3460; border-radius: 4px;
+  padding: 6px 10px; margin-bottom: 8px;
+}
+.group-info-name {
+  flex: 1; font-size: 0.8rem; font-weight: 600; color: #aac;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.group-select {
+  width: 100%; background: #0d1b36; border: 1px solid #0f3460;
+  color: #e0e0e0; padding: 5px 8px; border-radius: 4px;
+  font-size: 0.82rem; cursor: pointer; transition: border-color 0.2s;
+}
+.group-select:focus { outline: none; border-color: #e94560; }
+.group-select option { background: #0d1b36; }
+
+.jstree-group-label { font-weight: 600; color: #aac; }
 
 .empty-state { color: #445; font-size: 0.78rem; text-align: center; padding: 24px 0; }
 

@@ -53,6 +53,17 @@ const LOCALE_EN = {
   footerProject:       'Project: {name} \u00a0|\u00a0 Panels: {count}',
   footerProjects:      'Projects: {count}',
 
+  // Groups
+  groups:               'Groups',
+  newGroup:             '+ New Group',
+  noGroups:             'No groups yet.',
+  groupLabel:           'Group',
+  noGroup:              '— No group —',
+  newGroupTitle:        'New Group',
+  groupNamePlaceholder: 'Group name...',
+  deleteGroup:          'Delete Group',
+  confirmDeleteGroup:   'Delete group "{name}"? Panels will be ungrouped.',
+
   // Alerts / confirms
   confirmDeleteProject: 'Delete project "{name}" and all its panels?',
   invalidJsonFile:      'Invalid JSON file.',

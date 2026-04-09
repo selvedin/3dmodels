@@ -53,6 +53,17 @@ const LOCALE_BS = {
   footerProject:       'Projekt: {name} \u00a0|\u00a0 Paneli: {count}',
   footerProjects:      'Projekti: {count}',
 
+  // Groups
+  groups:               'Grupe',
+  newGroup:             '+ Nova grupa',
+  noGroups:             'Jo\u0161 nema grupa.',
+  groupLabel:           'Grupa',
+  noGroup:              '\u2014 Bez grupe \u2014',
+  newGroupTitle:        'Nova grupa',
+  groupNamePlaceholder: 'Naziv grupe...',
+  deleteGroup:          'Obri\u0161i grupu',
+  confirmDeleteGroup:   'Obrisati grupu "{name}"? Paneli \u0107e biti razgrupisani.',
+
   // Alerts / confirms
   confirmDeleteProject: 'Obrisati projekt "{name}" i sve njegove panele?',
   invalidJsonFile:      'Neva\u017ee\u0107i JSON fajl.',
