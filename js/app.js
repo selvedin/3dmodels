@@ -19,6 +19,7 @@ new Vue({
       newGroupName: '',
 
       currentLang: I18n.getLang(),
+      formCollapsed: false,
     };
   },
 
@@ -216,6 +217,7 @@ new Vue({
       if (!panel) return;
       this.editingId = id;
       this.selectedGroupId = null;
+      this.formCollapsed = false;
       const { projectId, id: _id, ...fields } = panel;
       this.form = { ...fields };
     },

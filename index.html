@@ -92,8 +92,12 @@
     <div class="panel-right">
 
       <div class="panel-section">
-        <h2>{{ editingId ? t('editPanel') : t('addPanel') }}</h2>
+        <div class="panel-section-header" @click="formCollapsed = !formCollapsed">
+          <h2>{{ editingId ? t('editPanel') : t('addPanel') }}</h2>
+          <span class="panel-section-toggle" :class="{ open: !formCollapsed }">&#9650;</span>
+        </div>
 
+        <div class="panel-section-body" v-show="!formCollapsed">
         <div class="form-group" style="margin-bottom:8px">
           <label>{{ t('name') }}</label>
           <input v-model="form.name" :placeholder="t('namePlaceholder')" @keyup.enter="submitPanel" />
@@ -185,6 +189,7 @@
           <button class="btn btn-secondary btn-sm" style="flex:1" @click="cancelEdit">{{ t('cancel') }}</button>
           <button class="btn btn-danger btn-sm" style="flex:1" @click="deletePanel(editingId)">{{ t('deletePanel') }}</button>
         </div>
+        </div><!-- /panel-section-body -->
       </div>
 
       <!-- Parts tree -->
