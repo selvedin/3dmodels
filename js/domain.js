@@ -2,6 +2,10 @@ function createPanel(overrides = {}) {
   return { ...DEFAULT_PANEL, ...overrides };
 }
 
+function createGroup(overrides = {}) {
+  return { ...DEFAULT_GROUP, ...overrides };
+}
+
 function deg2rad(degrees) {
   return degrees * Math.PI / 180;
 }

@@ -92,8 +92,12 @@
     <div class="panel-right">
 
       <div class="panel-section">
-        <h2>{{ editingId ? t('editPanel') : t('addPanel') }}</h2>
+        <div class="panel-section-header" @click="formCollapsed = !formCollapsed">
+          <h2>{{ editingId ? t('editPanel') : t('addPanel') }}</h2>
+          <span class="panel-section-toggle" :class="{ open: !formCollapsed }">&#9650;</span>
+        </div>
 
+        <div class="panel-section-body" v-show="!formCollapsed">
         <div class="form-group" style="margin-bottom:8px">
           <label>{{ t('name') }}</label>
           <input v-model="form.name" :placeholder="t('namePlaceholder')" @keyup.enter="submitPanel" />
@@ -147,6 +151,14 @@
           </div>
         </div>
 
+        <div class="section-label">{{ t('groupLabel') }}</div>
+        <div class="form-group" style="margin-bottom:8px">
+          <select v-model="form.groupId" class="group-select">
+            <option :value="null">{{ t('noGroup') }}</option>
+            <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }}</option>
+          </select>
+        </div>
+
         <div class="section-label">{{ t('material') }}</div>
 
         <!-- Type tabs -->
@@ -177,12 +189,24 @@
           <button class="btn btn-secondary btn-sm" style="flex:1" @click="cancelEdit">{{ t('cancel') }}</button>
           <button class="btn btn-danger btn-sm" style="flex:1" @click="deletePanel(editingId)">{{ t('deletePanel') }}</button>
         </div>
+        </div><!-- /panel-section-body -->
       </div>
 
       <!-- Parts tree -->
       <div class="parts-tree">
-        <h2>{{ t('panelsList') }} ({{ panels.length }})</h2>
-        <div v-if="panels.length === 0" class="empty-state">
+        <div class="parts-tree-header">
+          <h2>{{ t('panelsList') }} ({{ panels.length }})</h2>
+          <button class="btn btn-secondary btn-sm" @click="showNewGroupModal = true">{{ t('newGroup') }}</button>
+        </div>
+
+        <!-- Group info bar — shown when a group node is selected -->
+        <div v-if="selectedGroup" class="group-info-bar">
+          <span class="group-info-name">{{ selectedGroup.name }}</span>
+          <button class="btn btn-danger btn-sm" @click="deleteGroup(selectedGroup.id)">{{ t('deleteGroup') }}</button>
+          <button class="btn btn-secondary btn-sm" @click="cancelGroupSelection">&#x2715;</button>
+        </div>
+
+        <div v-if="panels.length === 0 && groups.length === 0" class="empty-state">
           {{ t('noPanelsLine1') }}<br>{{ t('noPanelsLine2') }}
         </div>
         <div id="jstree-container"></div>
@@ -211,6 +235,24 @@
       <div class="modal-actions">
         <button class="btn btn-secondary" @click="showNewProjectModal = false">{{ t('cancel') }}</button>
         <button class="btn btn-primary" @click="createProject" :disabled="!newProjectName.trim()">{{ t('create') }}</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── NEW GROUP MODAL ───────────────────────────────── -->
+  <div class="modal-overlay" v-if="showNewGroupModal" @click.self="showNewGroupModal = false">
+    <div class="modal">
+      <h3>{{ t('newGroupTitle') }}</h3>
+      <input
+        v-model="newGroupName"
+        :placeholder="t('groupNamePlaceholder')"
+        ref="newGroupInput"
+        @keyup.enter="createGroup"
+        maxlength="80"
+      />
+      <div class="modal-actions">
+        <button class="btn btn-secondary" @click="showNewGroupModal = false">{{ t('cancel') }}</button>
+        <button class="btn btn-primary" @click="createGroup" :disabled="!newGroupName.trim()">{{ t('create') }}</button>
       </div>
     </div>
   </div>

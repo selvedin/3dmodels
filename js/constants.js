@@ -2,6 +2,11 @@ const DEFAULT_PANEL = {
   name: '', width: 600, height: 600, depth: 18,
   px: 0, py: 0, pz: 0, rx: 0, ry: 0, rz: 0,
   materialType: 'color', color: '#4a90d9', imageDataUrl: null,
+  groupId: null,
+};
+
+const DEFAULT_GROUP = {
+  name: '',
 };
 
 const SCENE_CONFIG = {
